@@ -1,0 +1,171 @@
+{
+  "widgets": [
+    {
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 24,
+      "height": 1,
+      "properties": {
+        "markdown": "# 💰 FinOps Dashboard - Monitoramento de Custos AWS"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 1,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Billing", "EstimatedCharges", "Currency", "USD", {"stat": "Maximum", "period": 86400}]
+        ],
+        "view": "timeSeries",
+        "stacked": false,
+        "region": "us-east-1",
+        "title": "📈 Custo Estimado Total (USD)",
+        "period": 86400,
+        "yAxis": {"left": {"min": 0}}
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 1,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Billing", "EstimatedCharges", "ServiceName", "AmazonEC2", "Currency", "USD", {"stat": "Maximum"}],
+          ["AWS/Billing", "EstimatedCharges", "ServiceName", "AmazonRDS", "Currency", "USD", {"stat": "Maximum"}],
+          ["AWS/Billing", "EstimatedCharges", "ServiceName", "AmazonS3", "Currency", "USD", {"stat": "Maximum"}],
+          ["AWS/Billing", "EstimatedCharges", "ServiceName", "AWSLambda", "Currency", "USD", {"stat": "Maximum"}],
+          ["AWS/Billing", "EstimatedCharges", "ServiceName", "AmazonDynamoDB", "Currency", "USD", {"stat": "Maximum"}]
+        ],
+        "view": "timeSeries",
+        "stacked": true,
+        "region": "us-east-1",
+        "title": "📊 Custo por Serviço (Top 5)",
+        "period": 86400
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 7,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/EC2", "CPUUtilization", {"stat": "Average"}]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "🖥️ EC2 - CPU Média (todas instâncias)",
+        "period": 3600,
+        "yAxis": {"left": {"min": 0, "max": 100}},
+        "annotations": {
+          "horizontal": [
+            {"label": "Subutilizada", "value": 10, "color": "#ff7f0e"},
+            {"label": "Alvo", "value": 40, "color": "#2ca02c"}
+          ]
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "x": 8,
+      "y": 7,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/EBS", "VolumeReadOps", {"stat": "Sum"}],
+          ["AWS/EBS", "VolumeWriteOps", {"stat": "Sum"}]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "💾 EBS - Operações de I/O",
+        "period": 3600
+      }
+    },
+    {
+      "type": "metric",
+      "x": 16,
+      "y": 7,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/S3", "BucketSizeBytes", "StorageType", "StandardStorage", "BucketName", "NOME-DO-BUCKET", {"stat": "Average", "period": 86400}]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "📦 S3 - Tamanho do Bucket",
+        "period": 86400
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 13,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/RDS", "CPUUtilization", {"stat": "Average"}],
+          ["AWS/RDS", "DatabaseConnections", {"stat": "Average"}]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "🗄️ RDS - CPU e Conexões",
+        "period": 3600
+      }
+    },
+    {
+      "type": "metric",
+      "x": 8,
+      "y": 13,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "Invocations", {"stat": "Sum"}],
+          ["AWS/Lambda", "Duration", {"stat": "Average"}],
+          ["AWS/Lambda", "Errors", {"stat": "Sum"}]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "⚡ Lambda - Invocações e Duração",
+        "period": 3600
+      }
+    },
+    {
+      "type": "metric",
+      "x": 16,
+      "y": 13,
+      "width": 8,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/NATGateway", "BytesOutToDestination", {"stat": "Sum"}],
+          ["AWS/NATGateway", "BytesOutToSource", {"stat": "Sum"}]
+        ],
+        "view": "timeSeries",
+        "region": "us-east-1",
+        "title": "🌐 NAT Gateway - Bytes Transferidos",
+        "period": 3600
+      }
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 19,
+      "width": 24,
+      "height": 2,
+      "properties": {
+        "markdown": "## 🎯 Metas FinOps\n| Meta | Alvo | Status |\n|------|------|--------|\n| CPU média EC2 | > 40% | Verificar acima |\n| Volumes gp2 | 0 | Migrar para gp3 |\n| EIPs não associados | 0 | Liberar |\n| Buckets sem lifecycle | 0 | Configurar |\n| Taxa de tags | > 95% | Executar tag-compliance-checker |"
+      }
+    }
+  ]
+}

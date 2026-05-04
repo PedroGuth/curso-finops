@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  FinOps - Alertas de Anomalias de Custo
+  Configura AWS Cost Anomaly Detection com monitores por serviço e por conta,
+  enviando alertas por email e SNS quando gastos anormais são detectados.
+
+Parameters:
+  EmailNotification:
+    Type: String
+    Description: Email para receber alertas de anomalias de custo
+    AllowedPattern: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+
+  ThresholdAmount:
+    Type: Number
+    Default: 10
+    Description: Valor mínimo (USD) para disparar alerta de anomalia
+    MinValue: 1
+
+  MonitorType:
+    Type: String
+    Default: DIMENSIONAL
+    AllowedValues:
+      - DIMENSIONAL
+      - CUSTOM
+    Description: Tipo de monitor (DIMENSIONAL = por serviço, CUSTOM = personalizado)
+
+Resources:
+  # --- SNS Topic para notificações ---
+  CostAnomalyTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: finops-cost-anomaly-alerts
+      DisplayName: "FinOps - Alertas de Anomalia de Custo"
+      Tags:
+        - Key: Department
+          Value: FinOps
+        - Key: Environment
+          Value: Production
+
+  CostAnomalyEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref CostAnomalyTopic
+      Protocol: email
+      Endpoint: !Ref EmailNotification
+
+  # --- Policy para Cost Anomaly Detection publicar no SNS ---
+  CostAnomalyTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref CostAnomalyTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCostAnomalyDetection
+            Effect: Allow
+            Principal:
+              Service: costalerts.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref CostAnomalyTopic
+
+  # --- Monitor de Anomalias por Serviço ---
+  ServiceAnomalyMonitor:
+    Type: AWS::CE::AnomalyMonitor
+    Properties:
+      MonitorName: finops-monitor-por-servico
+      MonitorType: DIMENSIONAL
+      MonitorDimension: SERVICE
+
+  # --- Monitor de Anomalias por Conta (para Organizations) ---
+  AccountAnomalyMonitor:
+    Type: AWS::CE::AnomalyMonitor
+    Properties:
+      MonitorName: finops-monitor-por-conta
+      MonitorType: DIMENSIONAL
+      MonitorDimension: SERVICE
+
+  # --- Subscription: conecta monitor ao alerta ---
+  ServiceAnomalySubscription:
+    Type: AWS::CE::AnomalySubscription
+    Properties:
+      SubscriptionName: finops-alerta-servico
+      MonitorArnList:
+        - !Ref ServiceAnomalyMonitor
+      Subscribers:
+        - Type: SNS
+          Address: !Ref CostAnomalyTopic
+        - Type: EMAIL
+          Address: !Ref EmailNotification
+      Threshold: !Ref ThresholdAmount
+      Frequency: DAILY
+
+  # --- Budget com alerta (complementar) ---
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: finops-budget-mensal
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: 500
+          Unit: USD
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref EmailNotification
+            - SubscriptionType: SNS
+              Address: !Ref CostAnomalyTopic
+        - Notification:
+            NotificationType: FORECASTED
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref EmailNotification
+            - SubscriptionType: SNS
+              Address: !Ref CostAnomalyTopic
+
+Outputs:
+  SNSTopicArn:
+    Description: ARN do tópico SNS para alertas
+    Value: !Ref CostAnomalyTopic
+    Export:
+      Name: FinOps-CostAnomalyTopicArn
+
+  ServiceMonitorArn:
+    Description: ARN do monitor de anomalias por serviço
+    Value: !Ref ServiceAnomalyMonitor
+
+  BudgetName:
+    Description: Nome do budget mensal
+    Value: finops-budget-mensal
+
+  DeployCommand:
+    Description: Comando para deploy
+    Value: !Sub |
+      aws cloudformation deploy \
+        --template-file cost-anomaly-alerts.yaml \
+        --stack-name finops-cost-alerts \
+        --parameter-overrides EmailNotification=${EmailNotification} ThresholdAmount=${ThresholdAmount}

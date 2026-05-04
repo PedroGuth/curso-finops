@@ -60,6 +60,30 @@ Não tem enrolação: o objetivo é transformar números e faturas em oportunida
 
 ## Recursos do Repositório
 
+### 🛠️ [Ferramentas FinOps](tools/)
+
+| Ferramenta | Tipo | Descrição |
+|------------|------|-----------|
+| `aws-cost-optimizer.py` | Python | Analisa EC2, EBS, EIP, RDS, S3 e identifica economia |
+| `tag-compliance-checker.sh` | Bash | Verifica compliance de tags em todos os recursos |
+| `finops-dashboard.json` | CloudWatch | Dashboard com 9 widgets de monitoramento de custos |
+| `cost-anomaly-alerts.yaml` | CloudFormation | Cost Anomaly Detection + Budget + alertas |
+| `reserved-instances-calculator.py` | Python | Calculadora de economia com RIs e Savings Plans |
+
+### ✅ [Checklists](checklists/)
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `aws-well-architected-checklist.md` | 84 itens do pilar de custos do Well-Architected Framework |
+
+### 📝 [Templates de Relatórios](templates/)
+
+| Template | Para quem | Frequência |
+|----------|-----------|------------|
+| `relatorio-mensal-custos.md` | Equipe técnica + gestão | Mensal |
+| `relatorio-executivo-finops.md` | C-Level / Diretoria | Trimestral |
+| `plano-otimizacao-custos.md` | Equipe FinOps + Engineering | Por projeto |
+
 ### 🔧 [Scripts de Automação](scripts/)
 
 | Script | O que faz | Economia |
@@ -100,6 +124,7 @@ Saber o que é um EC2, S3 e RDS já serve :) Bastam conhecimentos práticos na n
 ├── README.md
 ├── LICENSE
 ├── CONTRIBUTING.md
+├── CHEATSHEET.md                    # 📋 Referência rápida de FinOps
 ├── labs/
 │   ├── lab-01-config-tags/          # Tags e AWS Config
 │   ├── lab-02-auto-scaling/         # Ambientes temporários
@@ -107,9 +132,12 @@ Saber o que é um EC2, S3 e RDS já serve :) Bastam conhecimentos práticos na n
 │   ├── lab-04-cloudfront-endpoints/ # CloudFront e VPC Endpoints
 │   ├── lab-05-s3-lifecycle/         # Ciclo de vida S3
 │   └── lab-06-instance-scheduler/   # Instance Scheduler
-├── scripts/                         # Automações FinOps (bash)
-├── policies/                        # IAM Policies e SCPs (JSON)
-└── queries/                         # Queries Athena para CUR (SQL)
+├── tools/                           # 🛠️ Ferramentas FinOps (Python, Bash, JSON, YAML)
+├── scripts/                         # 🔧 Automações FinOps (Bash)
+├── policies/                        # 🔒 IAM Policies e SCPs (JSON)
+├── queries/                         # 📊 Queries Athena para CUR (SQL)
+├── checklists/                      # ✅ Well-Architected Checklist
+└── templates/                       # 📝 Templates de relatórios FinOps
 ```
 
 ## Referências
