@@ -18,6 +18,9 @@ Queries SQL para analisar o AWS Cost and Usage Report (CUR) usando Amazon Athena
 | `custo-transferencia-dados.sql` | Custos de transferência de dados por serviço |
 | `recursos-sem-tags.sql` | Top 50 recursos sem tag Environment (desperdício) |
 | `cobertura-savings-plans.sql` | Cobertura de Savings Plans e RIs por serviço |
+| `top-accounts-custo.sql` | Top contas por custo (Organizations) |
+| `ec2-custo-por-tipo.sql` | EC2 por tipo de instância e modelo de preço |
+| `custo-por-regiao.sql` | Custo total por região AWS |
 
 ## Como Usar
 

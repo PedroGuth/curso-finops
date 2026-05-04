@@ -8,6 +8,18 @@
 [![FAQ](https://img.shields.io/badge/❓-FAQ-orange?style=for-the-badge)](FAQ.md)
 [![Certificações](https://img.shields.io/badge/🎓-Certificações-teal?style=for-the-badge)](CERTIFICACOES.md)
 
+> Clone o repo, rode `make audit` e descubra em 2 minutos quanto você está desperdiçando na AWS.
+
+```bash
+git clone https://github.com/PedroGuth/curso-finops.git
+cd curso-finops
+make audit          # Auditoria completa da conta
+make all-dry-run    # Ver tudo que pode ser otimizado
+make calc-ri        # Simular economia com Savings Plans
+```
+
+---
+
 Repositório de apoio ao curso **FinOps na AWS** disponível na Udemy.
 
 Você quer ser o mestre do orçamento e FinOps na AWS? Então vamos juntos.
@@ -93,6 +105,9 @@ Não tem enrolação: o objetivo é transformar números e faturas em oportunida
 | `migrate-gp2-to-gp3.sh` | Migra volumes EBS de gp2 para gp3 | ~20% no EBS |
 | `cleanup-unused-eips.sh` | Libera Elastic IPs não associados | ~$3.65/mês por EIP |
 | `cleanup-orphan-snapshots.sh` | Remove snapshots de volumes deletados | $0.05/GB/mês |
+| `find-idle-rds.sh` | Identifica instâncias RDS ociosas | Varia por instância |
+| `find-old-gen-instances.sh` | Encontra EC2 de gerações antigas | 10-40% por upgrade |
+| `finops-audit.sh` | Auditoria completa da conta AWS | Relatório consolidado |
 
 ### 🔒 [IAM Policies e SCPs](policies/)
 
@@ -126,6 +141,35 @@ Não tem enrolação: o objetivo é transformar números e faturas em oportunida
 | `s3-lifecycle/` | S3 com lifecycle, versionamento e encryption |
 | `instance-scheduler/` | Lambda + EventBridge para ligar/desligar EC2 |
 | `vpc-endpoints/` | VPC Endpoints Gateway para S3 e DynamoDB |
+| `landing-zone-finops/` | Landing Zone com governança de custos multi-account |
+
+### ⚡ [Funções Lambda](lambda/)
+
+| Função | Descrição |
+|--------|-----------|
+| `auto-stop-idle-ec2/` | Para instâncias EC2 ociosas automaticamente |
+| `tag-enforcer/` | Aplica tags obrigatórias em recursos novos |
+| `cost-report-daily/` | Gera relatório diário de custos e envia por e-mail |
+
+### 📖 Documentação Extra
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `CHEATSHEET.md` | Referência rápida de comandos e conceitos FinOps |
+| `FAQ.md` | Dúvidas frequentes dos alunos |
+| `GLOSSARIO.md` | Glossário de termos FinOps e AWS |
+| `DECISOES.md` | Diagramas de decisão para escolhas de custo |
+| `CERTIFICACOES.md` | Guia de estudo para certificações AWS |
+| `GETTING-STARTED.md` | Primeiros passos para usar o repositório |
+
+### 🚨 [Runbooks](runbooks/)
+
+| Runbook | Quando usar |
+|---------|-------------|
+| `custo-inesperado.md` | Fatura veio mais alta que o esperado |
+| `recurso-esquecido.md` | Recurso rodando sem dono identificado |
+| `savings-plan-expirando.md` | Savings Plan próximo do vencimento |
+| `nova-conta-aws.md` | Configuração inicial de conta com foco em custos |
 
 ## Pré-requisitos
 
@@ -138,11 +182,13 @@ Saber o que é um EC2, S3 e RDS já serve :) Bastam conhecimentos práticos na n
 ├── README.md
 ├── LICENSE
 ├── CONTRIBUTING.md
+├── Makefile
 ├── CHEATSHEET.md                    # 📋 Referência rápida de FinOps
 ├── FAQ.md                           # ❓ Dúvidas frequentes dos alunos
 ├── GLOSSARIO.md                     # 📖 Glossário de termos FinOps/AWS
 ├── DECISOES.md                      # 🔀 Diagramas de decisão de custos
 ├── CERTIFICACOES.md                 # 🎓 Guia de estudo para certificações
+├── GETTING-STARTED.md               # 🚀 Primeiros passos
 ├── labs/
 │   ├── lab-01-config-tags/          # Tags e AWS Config
 │   ├── lab-02-auto-scaling/         # Ambientes temporários
@@ -150,14 +196,56 @@ Saber o que é um EC2, S3 e RDS já serve :) Bastam conhecimentos práticos na n
 │   ├── lab-04-cloudfront-endpoints/ # CloudFront e VPC Endpoints
 │   ├── lab-05-s3-lifecycle/         # Ciclo de vida S3
 │   └── lab-06-instance-scheduler/   # Instance Scheduler
-├── tools/                           # 🛠️ Ferramentas FinOps (Python, Bash, JSON, YAML)
-├── scripts/                         # 🔧 Automações FinOps (Bash)
-├── lambda/                          # ⚡ Funções Lambda para automação
-├── policies/                        # 🔒 IAM Policies e SCPs (JSON)
-├── queries/                         # 📊 Queries Athena para CUR (SQL)
-├── terraform/                       # 🏗️ Módulos Terraform reutilizáveis
-├── checklists/                      # ✅ Well-Architected Checklist
-└── templates/                       # 📝 Templates de relatórios FinOps
+├── tools/
+│   ├── aws-cost-optimizer.py        # 🐍 Análise completa de custos
+│   ├── tag-compliance-checker.sh    # 🏷️ Compliance de tags
+│   ├── finops-dashboard.json        # 📊 Dashboard CloudWatch
+│   ├── cost-anomaly-alerts.yaml     # 🚨 Alertas de anomalia
+│   └── reserved-instances-calculator.py # 💰 Calculadora de RIs/SPs
+├── scripts/
+│   ├── migrate-gp2-to-gp3.sh       # 💾 Migração EBS gp2 → gp3
+│   ├── cleanup-unused-eips.sh       # 🧹 Limpeza de EIPs
+│   ├── cleanup-orphan-snapshots.sh  # 🧹 Limpeza de snapshots órfãos
+│   ├── find-idle-rds.sh             # 🔍 RDS ociosos
+│   ├── find-old-gen-instances.sh    # 🔍 EC2 de geração antiga
+│   └── finops-audit.sh              # 🔎 Auditoria completa
+├── lambda/
+│   ├── auto-stop-idle-ec2/          # ⏹️ Para EC2 ociosas
+│   ├── tag-enforcer/                # 🏷️ Aplica tags obrigatórias
+│   └── cost-report-daily/           # 📧 Relatório diário de custos
+├── policies/
+│   ├── require-tags-ec2.json        # 🏷️ Tags obrigatórias
+│   ├── restrict-instance-types.json # 🚫 Tipos restritos
+│   ├── abac-department-access.json  # 🔐 ABAC por departamento
+│   ├── scp-deny-regions.json        # 🌍 Bloqueio de regiões
+│   └── scp-deny-expensive-resources.json # 💸 Bloqueio de recursos caros
+├── queries/
+│   ├── custo-por-servico.sql        # Top serviços
+│   ├── custo-diario.sql             # Custo diário
+│   ├── custo-por-tag.sql            # Custo por tag
+│   ├── custo-transferencia-dados.sql # Transfer de dados
+│   ├── recursos-sem-tags.sql        # Sem tags
+│   ├── cobertura-savings-plans.sql  # Cobertura SPs/RIs
+│   ├── top-accounts-custo.sql       # Top contas
+│   ├── ec2-custo-por-tipo.sql       # EC2 por tipo
+│   └── custo-por-regiao.sql         # Custo por região
+├── terraform/
+│   ├── budget-alerts/               # 💰 Budget + alertas
+│   ├── s3-lifecycle/                # 📦 S3 lifecycle
+│   ├── instance-scheduler/          # ⏰ Scheduler EC2
+│   ├── vpc-endpoints/               # 🔗 VPC Endpoints
+│   └── landing-zone-finops/         # 🏢 Landing Zone FinOps
+├── runbooks/
+│   ├── custo-inesperado.md          # 🚨 Custo alto inesperado
+│   ├── recurso-esquecido.md         # 👻 Recurso sem dono
+│   ├── savings-plan-expirando.md    # ⏳ SP expirando
+│   └── nova-conta-aws.md            # 🆕 Setup de conta nova
+├── checklists/
+│   └── aws-well-architected-checklist.md # ✅ 84 itens do pilar de custos
+└── templates/
+    ├── relatorio-mensal-custos.md   # 📝 Relatório mensal
+    ├── relatorio-executivo-finops.md # 📝 Relatório executivo
+    └── plano-otimizacao-custos.md   # 📝 Plano de otimização
 ```
 
 ## Referências

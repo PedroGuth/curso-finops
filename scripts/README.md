@@ -15,6 +15,9 @@ Scripts prontos para identificar e corrigir desperdícios comuns na AWS.
 | `migrate-gp2-to-gp3.sh` | Migra volumes EBS de gp2 para gp3 | ~20% no custo de EBS |
 | `cleanup-unused-eips.sh` | Libera Elastic IPs não associados | ~$3.65/mês por EIP |
 | `cleanup-orphan-snapshots.sh` | Remove snapshots de volumes deletados | $0.05/GB/mês |
+| `find-idle-rds.sh` | Identifica instâncias RDS com 0 conexões | Varia por classe |
+| `find-old-gen-instances.sh` | Lista EC2 de gerações antigas com sugestão | ~20% por instância |
+| `finops-audit.sh` | Auditoria completa da conta (10 verificações) | Identifica tudo |
 
 ## Uso
 

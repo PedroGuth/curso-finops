@@ -10,6 +10,7 @@ Módulos Terraform prontos para implementar práticas de FinOps na AWS.
 | `s3-lifecycle/` | S3 com lifecycle rules para otimizar custos de armazenamento |
 | `instance-scheduler/` | Liga/desliga EC2 por horário usando Lambda + EventBridge |
 | `vpc-endpoints/` | VPC Endpoints Gateway para S3 e DynamoDB (economia vs NAT Gateway) |
+| `landing-zone-finops/` | Setup completo de FinOps: budget + anomaly + CUR + dashboard + IAM policies |
 
 ## Como Usar
 
@@ -64,6 +65,8 @@ terraform/
 │   └── main.tf
 ├── instance-scheduler/
 │   └── main.tf
-└── vpc-endpoints/
+├── vpc-endpoints/
+│   └── main.tf
+└── landing-zone-finops/
     └── main.tf
 ```
