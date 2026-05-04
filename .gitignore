@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Office temp files
+~$*
+
+# IDE
+.vscode/
+.idea/
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# AWS
+.aws/credentials
