@@ -1,0 +1,36 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyExpensiveEC2",
+      "Effect": "Deny",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": {
+        "ForAnyValue:StringLike": {
+          "ec2:InstanceType": [
+            "p4d.*",
+            "p5.*",
+            "x2idn.*",
+            "u-*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyRDSLargeInstances",
+      "Effect": "Deny",
+      "Action": "rds:CreateDBInstance",
+      "Resource": "*",
+      "Condition": {
+        "ForAnyValue:StringLike": {
+          "rds:DatabaseClass": [
+            "db.r6g.8xlarge",
+            "db.r6g.12xlarge",
+            "db.r6g.16xlarge"
+          ]
+        }
+      }
+    }
+  ]
+}
