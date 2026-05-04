@@ -1,0 +1,175 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Lab 05 - Ciclo de vida do Amazon S3.
+  S3 com lifecycle rules, Lambda para registrar metadados e Aurora Serverless v2.
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: lab05-lifecycle-demo
+    Description: Nome base do bucket S3
+
+Resources:
+  # --- S3 com Lifecycle ---
+  LifecycleBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${BucketName}-${AWS::AccountId}'
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:Put
+            Function: !GetAtt MetadataFunction.Arn
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 30
+              - StorageClass: GLACIER
+                TransitionInDays: 90
+            ExpirationInDays: 365
+
+  # --- Lambda para registrar metadados ---
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AmazonRDSDataFullAccess
+
+  MetadataFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: lab05-register-metadata
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 30
+      Environment:
+        Variables:
+          CLUSTER_ARN: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'
+          SECRET_ARN: !Ref AuroraSecret
+          DATABASE: lab05db
+      Code:
+        ZipFile: |
+          import boto3, os, json
+          rds_data = boto3.client('rds-data')
+          def handler(event, context):
+              for record in event['Records']:
+                  bucket = record['s3']['bucket']['name']
+                  key = record['s3']['object']['key']
+                  size = record['s3']['object'].get('size', 0)
+                  rds_data.execute_statement(
+                      resourceArn=os.environ['CLUSTER_ARN'],
+                      secretArn=os.environ['SECRET_ARN'],
+                      database=os.environ['DATABASE'],
+                      sql='INSERT INTO object_index (bucket_name, object_key, size_bytes) VALUES (:b, :k, :s)',
+                      parameters=[
+                          {'name': 'b', 'value': {'stringValue': bucket}},
+                          {'name': 'k', 'value': {'stringValue': key}},
+                          {'name': 's', 'value': {'longValue': size}}
+                      ])
+              return {'statusCode': 200}
+
+  S3InvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MetadataFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub 'arn:aws:s3:::${BucketName}-${AWS::AccountId}'
+
+  # --- Aurora Serverless v2 ---
+  AuroraSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: lab05-aurora-credentials
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "admin"}'
+        GenerateStringKey: password
+        PasswordLength: 16
+        ExcludePunctuation: true
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets para Aurora Lab05
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+
+  AuroraSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Acesso Aurora Lab05
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 10.0.0.0/16
+
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      DBClusterIdentifier: lab05-aurora
+      Engine: aurora-mysql
+      EngineVersion: '8.0.mysql_aurora.3.04.0'
+      MasterUsername: !Sub '{{resolve:secretsmanager:${AuroraSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${AuroraSecret}:SecretString:password}}'
+      DatabaseName: lab05db
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VpcSecurityGroupIds: [!Ref AuroraSecurityGroup]
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: 0.5
+        MaxCapacity: 2
+      EnableHttpEndpoint: true
+
+  AuroraInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: db.serverless
+      Engine: aurora-mysql
+
+Outputs:
+  BucketName:
+    Description: Nome do bucket S3 com lifecycle
+    Value: !Ref LifecycleBucket
+  LambdaFunctionArn:
+    Description: ARN da Lambda de metadados
+    Value: !GetAtt MetadataFunction.Arn
+  AuroraClusterEndpoint:
+    Description: Endpoint do Aurora Serverless v2
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+  AuroraClusterArn:
+    Description: ARN do cluster Aurora
+    Value: !Sub 'arn:aws:rds:${AWS::Region}:${AWS::AccountId}:cluster:${AuroraCluster}'

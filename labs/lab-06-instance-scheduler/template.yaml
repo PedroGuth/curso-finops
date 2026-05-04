@@ -1,0 +1,279 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Lab 06 - AWS Instance Scheduler.
+  Lambda que liga/desliga EC2 e RDS por tag Schedule, com DynamoDB para configuração.
+
+Parameters:
+  ScheduleName:
+    Type: String
+    Default: office-hours
+    Description: Nome do schedule
+  StartTime:
+    Type: String
+    Default: '08:00'
+    Description: Horário de início (HH:MM)
+  StopTime:
+    Type: String
+    Default: '18:00'
+    Description: Horário de parada (HH:MM)
+  Timezone:
+    Type: String
+    Default: America/Sao_Paulo
+    Description: Fuso horário do schedule
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Resources:
+  # --- DynamoDB Tables ---
+  ConfigTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: instance-scheduler-config
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: schedule_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: schedule_name
+          KeyType: HASH
+
+  StateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: instance-scheduler-state
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: instance_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: instance_id
+          KeyType: HASH
+
+  # --- IAM Role para Lambda ---
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SchedulerPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:StartInstances
+                  - ec2:StopInstances
+                  - ec2:DescribeTags
+                  - rds:DescribeDBInstances
+                  - rds:StartDBInstance
+                  - rds:StopDBInstance
+                  - rds:ListTagsForResource
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt ConfigTable.Arn
+                  - !GetAtt StateTable.Arn
+
+  # --- Lambda Scheduler ---
+  SchedulerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: instance-scheduler
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt SchedulerRole.Arn
+      Timeout: 120
+      Environment:
+        Variables:
+          CONFIG_TABLE: !Ref ConfigTable
+          STATE_TABLE: !Ref StateTable
+          TAG_KEY: Schedule
+      Code:
+        ZipFile: |
+          import boto3, os
+          from datetime import datetime
+          import pytz
+
+          ec2 = boto3.client('ec2')
+          rds = boto3.client('rds')
+          dynamodb = boto3.resource('dynamodb')
+
+          def handler(event, context):
+              config_table = dynamodb.Table(os.environ['CONFIG_TABLE'])
+              tag_key = os.environ['TAG_KEY']
+
+              # Busca todos os schedules
+              schedules = config_table.scan()['Items']
+
+              for schedule in schedules:
+                  tz = pytz.timezone(schedule['timezone'])
+                  now = datetime.now(tz)
+                  current_time = now.strftime('%H:%M')
+                  start = schedule['start_time']
+                  stop = schedule['stop_time']
+                  name = schedule['schedule_name']
+
+                  # Determina ação
+                  should_run = start <= current_time < stop
+
+                  # EC2
+                  instances = ec2.describe_instances(
+                      Filters=[{'Name': f'tag:{tag_key}', 'Values': [name]}]
+                  )
+                  for res in instances['Reservations']:
+                      for inst in res['Instances']:
+                          iid = inst['InstanceId']
+                          state = inst['State']['Name']
+                          if should_run and state == 'stopped':
+                              ec2.start_instances(InstanceIds=[iid])
+                          elif not should_run and state == 'running':
+                              ec2.stop_instances(InstanceIds=[iid])
+
+              return {'status': 'ok'}
+
+  # --- EventBridge (a cada 5 minutos) ---
+  SchedulerRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: instance-scheduler-trigger
+      Description: Aciona o Instance Scheduler a cada 5 minutos
+      ScheduleExpression: 'rate(5 minutes)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt SchedulerFunction.Arn
+          Id: SchedulerTarget
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref SchedulerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SchedulerRule.Arn
+
+  # --- Seed do DynamoDB (Custom Resource) ---
+  SeedRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DDBWrite
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: dynamodb:PutItem
+                Resource: !GetAtt ConfigTable.Arn
+
+  SeedFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: instance-scheduler-seed
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt SeedRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import boto3, cfnresponse, os
+          def handler(event, context):
+              if event['RequestType'] == 'Delete':
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  return
+              try:
+                  ddb = boto3.resource('dynamodb')
+                  table = ddb.Table(event['ResourceProperties']['TableName'])
+                  table.put_item(Item={
+                      'schedule_name': event['ResourceProperties']['ScheduleName'],
+                      'start_time': event['ResourceProperties']['StartTime'],
+                      'stop_time': event['ResourceProperties']['StopTime'],
+                      'timezone': event['ResourceProperties']['Timezone']
+                  })
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+
+  SeedConfig:
+    Type: Custom::SeedDynamoDB
+    DependsOn: ConfigTable
+    Properties:
+      ServiceToken: !GetAtt SeedFunction.Arn
+      TableName: !Ref ConfigTable
+      ScheduleName: !Ref ScheduleName
+      StartTime: !Ref StartTime
+      StopTime: !Ref StopTime
+      Timezone: !Ref Timezone
+
+  # --- EC2 de exemplo ---
+  ExampleSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG para instancias de exemplo
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  ExampleInstance1:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.micro
+      ImageId: !Ref LatestAmiId
+      SecurityGroupIds: [!Ref ExampleSecurityGroup]
+      Tags:
+        - Key: Name
+          Value: lab06-instance-1
+        - Key: Schedule
+          Value: !Ref ScheduleName
+
+  ExampleInstance2:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t3.micro
+      ImageId: !Ref LatestAmiId
+      SecurityGroupIds: [!Ref ExampleSecurityGroup]
+      Tags:
+        - Key: Name
+          Value: lab06-instance-2
+        - Key: Schedule
+          Value: !Ref ScheduleName
+
+Outputs:
+  SchedulerFunctionArn:
+    Description: ARN da Lambda do Instance Scheduler
+    Value: !GetAtt SchedulerFunction.Arn
+  ConfigTableName:
+    Description: Tabela DynamoDB de configuração
+    Value: !Ref ConfigTable
+  StateTableName:
+    Description: Tabela DynamoDB de estado
+    Value: !Ref StateTable
+  ExampleInstance1Id:
+    Description: ID da instância de exemplo 1
+    Value: !Ref ExampleInstance1
+  ExampleInstance2Id:
+    Description: ID da instância de exemplo 2
+    Value: !Ref ExampleInstance2

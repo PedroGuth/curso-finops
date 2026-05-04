@@ -5,6 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/Licença-MIT-green?style=for-the-badge)](LICENSE)
 [![Labs](https://img.shields.io/badge/Labs-6%20práticos-blue?style=for-the-badge)](#laboratórios-práticos)
 [![Cheat Sheet](https://img.shields.io/badge/📋-Cheat%20Sheet-red?style=for-the-badge)](CHEATSHEET.md)
+[![FAQ](https://img.shields.io/badge/❓-FAQ-orange?style=for-the-badge)](FAQ.md)
+[![Certificações](https://img.shields.io/badge/🎓-Certificações-teal?style=for-the-badge)](CERTIFICACOES.md)
 
 Repositório de apoio ao curso **FinOps na AWS** disponível na Udemy.
 
@@ -125,6 +127,10 @@ Saber o que é um EC2, S3 e RDS já serve :) Bastam conhecimentos práticos na n
 ├── LICENSE
 ├── CONTRIBUTING.md
 ├── CHEATSHEET.md                    # 📋 Referência rápida de FinOps
+├── FAQ.md                           # ❓ Dúvidas frequentes dos alunos
+├── GLOSSARIO.md                     # 📖 Glossário de termos FinOps/AWS
+├── DECISOES.md                      # 🔀 Diagramas de decisão de custos
+├── CERTIFICACOES.md                 # 🎓 Guia de estudo para certificações
 ├── labs/
 │   ├── lab-01-config-tags/          # Tags e AWS Config
 │   ├── lab-02-auto-scaling/         # Ambientes temporários
@@ -134,6 +140,7 @@ Saber o que é um EC2, S3 e RDS já serve :) Bastam conhecimentos práticos na n
 │   └── lab-06-instance-scheduler/   # Instance Scheduler
 ├── tools/                           # 🛠️ Ferramentas FinOps (Python, Bash, JSON, YAML)
 ├── scripts/                         # 🔧 Automações FinOps (Bash)
+├── lambda/                          # ⚡ Funções Lambda para automação
 ├── policies/                        # 🔒 IAM Policies e SCPs (JSON)
 ├── queries/                         # 📊 Queries Athena para CUR (SQL)
 ├── checklists/                      # ✅ Well-Architected Checklist

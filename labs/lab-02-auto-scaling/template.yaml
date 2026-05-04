@@ -1,0 +1,227 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Lab 02 - Ambientes temporários com EC2 Auto Scaling.
+  Cria ASG com schedule (8h-18h), Lambda para atualizar AMI e AWS Backup.
+
+Parameters:
+  VpcCIDR:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR da VPC
+  ScheduleTimezone:
+    Type: String
+    Default: America/Sao_Paulo
+    Description: Fuso horário para os agendamentos
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+
+Resources:
+  # --- Rede ---
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: lab02-vpc
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Select [0, !Cidr [!Ref VpcCIDR, 4, 8]]
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: lab02-public
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  SubnetRTA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # --- Launch Template e ASG ---
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: lab02-lt
+      LaunchTemplateData:
+        InstanceType: t3.micro
+        ImageId: !Ref LatestAmiId
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: lab02-asg-instance
+              - Key: Environment
+                Value: dev
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: lab02-asg
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      MinSize: 0
+      MaxSize: 2
+      DesiredCapacity: 0
+      VPCZoneIdentifier:
+        - !Ref PublicSubnet
+
+  ScaleUpSchedule:
+    Type: AWS::AutoScaling::ScheduledAction
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroup
+      DesiredCapacity: 2
+      Recurrence: '0 8 * * MON-FRI'
+      TimeZone: !Ref ScheduleTimezone
+
+  ScaleDownSchedule:
+    Type: AWS::AutoScaling::ScheduledAction
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroup
+      DesiredCapacity: 0
+      Recurrence: '0 18 * * MON-FRI'
+      TimeZone: !Ref ScheduleTimezone
+
+  # --- Lambda para atualizar AMI ---
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: UpdateLaunchTemplate
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeImages
+                  - ec2:CreateLaunchTemplateVersion
+                  - ec2:ModifyLaunchTemplate
+                Resource: '*'
+
+  UpdateAmiFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: lab02-update-ami
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          LAUNCH_TEMPLATE_ID: !Ref LaunchTemplate
+      Code:
+        ZipFile: |
+          import boto3, os
+          ec2 = boto3.client('ec2')
+          def handler(event, context):
+              images = ec2.describe_images(
+                  Owners=['amazon'],
+                  Filters=[{'Name': 'name', 'Values': ['al2023-ami-2023*-x86_64']},
+                           {'Name': 'state', 'Values': ['available']}]
+              )['Images']
+              latest = sorted(images, key=lambda x: x['CreationDate'], reverse=True)[0]
+              lt_id = os.environ['LAUNCH_TEMPLATE_ID']
+              resp = ec2.create_launch_template_version(
+                  LaunchTemplateId=lt_id, SourceVersion='$Latest',
+                  LaunchTemplateData={'ImageId': latest['ImageId']})
+              version = str(resp['LaunchTemplateVersion']['VersionNumber'])
+              ec2.modify_launch_template(LaunchTemplateId=lt_id, DefaultVersion=version)
+              return {'ami': latest['ImageId'], 'version': version}
+
+  UpdateAmiScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: lab02-update-ami-daily
+      ScheduleExpression: 'cron(0 6 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt UpdateAmiFunction.Arn
+          Id: UpdateAmiTarget
+
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref UpdateAmiFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt UpdateAmiScheduleRule.Arn
+
+  # --- AWS Backup ---
+  BackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: lab02-vault
+
+  BackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: lab02-daily-backup
+        BackupPlanRule:
+          - RuleName: DailyBackup
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: 'cron(0 5 * * ? *)'
+            Lifecycle:
+              DeleteAfterDays: 7
+
+  BackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref BackupPlan
+      BackupSelection:
+        SelectionName: lab02-ec2-selection
+        IamRoleArn: !Sub 'arn:aws:iam::${AWS::AccountId}:role/service-role/AWSBackupDefaultServiceRole'
+        ListOfTags:
+          - ConditionType: STRINGEQUALS
+            ConditionKey: Environment
+            ConditionValue: dev
+
+Outputs:
+  VpcId:
+    Description: ID da VPC criada
+    Value: !Ref VPC
+  AutoScalingGroupName:
+    Description: Nome do Auto Scaling Group
+    Value: !Ref AutoScalingGroup
+  LambdaFunctionArn:
+    Description: ARN da Lambda de atualização de AMI
+    Value: !GetAtt UpdateAmiFunction.Arn
+  BackupPlanId:
+    Description: ID do plano de backup
+    Value: !Ref BackupPlan

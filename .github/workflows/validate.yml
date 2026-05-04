@@ -1,0 +1,82 @@
+name: Validate Repository Files
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-json:
+    name: Validate JSON
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JSON files
+        run: |
+          failed=0
+          for f in $(find policies/ tools/ -name '*.json'); do
+            if ! jq empty "$f" 2>&1; then
+              echo "❌ Invalid JSON: $f"
+              failed=1
+            else
+              echo "✅ $f"
+            fi
+          done
+          exit $failed
+
+  validate-yaml:
+    name: Validate YAML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate YAML files
+        run: |
+          failed=0
+          for f in $(find tools/ labs/ -name '*.yaml' -o -name '*.yml'); do
+            if ! python3 -c "import yaml, sys; yaml.safe_load(open(sys.argv[1]))" "$f" 2>&1; then
+              echo "❌ Invalid YAML: $f"
+              failed=1
+            else
+              echo "✅ $f"
+            fi
+          done
+          exit $failed
+
+  validate-scripts:
+    name: Validate Shell Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+      - name: Run shellcheck
+        run: |
+          failed=0
+          for f in $(find scripts/ tools/ -name '*.sh'); do
+            if ! shellcheck "$f"; then
+              failed=1
+            else
+              echo "✅ $f"
+            fi
+          done
+          exit $failed
+
+  validate-sql:
+    name: Validate SQL Comments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check SQL files have descriptive comment
+        run: |
+          failed=0
+          for f in $(find queries/ -name '*.sql'); do
+            first_line=$(head -n 1 "$f")
+            if [[ ! "$first_line" =~ ^-- ]]; then
+              echo "❌ Missing comment at top: $f"
+              failed=1
+            else
+              echo "✅ $f"
+            fi
+          done
+          exit $failed

@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Lab 01 - Controlar recursos com marcação e AWS Config.
+  Configura AWS Config com regras para exigir tags obrigatórias e restringir tipos de instância.
+
+Parameters:
+  RequiredTag1Key:
+    Type: String
+    Default: Department
+    Description: Primeira tag obrigatória
+  RequiredTag2Key:
+    Type: String
+    Default: Application
+    Description: Segunda tag obrigatória
+  RequiredTag3Key:
+    Type: String
+    Default: Environment
+    Description: Terceira tag obrigatória
+  AllowedInstanceType:
+    Type: String
+    Default: t3.medium
+    Description: Tipo de instância EC2 permitido
+
+Resources:
+  ConfigBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'aws-config-logs-${AWS::AccountId}-${AWS::Region}'
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldLogs
+            Status: Enabled
+            ExpirationInDays: 90
+
+  ConfigBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ConfigBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AWSConfigBucketPermissionsCheck
+            Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt ConfigBucket.Arn
+          - Sid: AWSConfigBucketDelivery
+            Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub '${ConfigBucket.Arn}/AWSLogs/${AWS::AccountId}/Config/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+
+  ConfigRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'config-role-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWS_ConfigRole
+
+  ConfigRecorder:
+    Type: AWS::Config::ConfigurationRecorder
+    Properties:
+      Name: default
+      RoleARN: !GetAtt ConfigRole.Arn
+      RecordingGroup:
+        AllSupported: true
+        IncludeGlobalResourceTypes: true
+
+  ConfigDeliveryChannel:
+    Type: AWS::Config::DeliveryChannel
+    DependsOn: ConfigBucketPolicy
+    Properties:
+      S3BucketName: !Ref ConfigBucket
+      ConfigSnapshotDeliveryProperties:
+        DeliveryFrequency: TwentyFour_Hours
+
+  RequiredTagsRule:
+    Type: AWS::Config::ConfigRule
+    DependsOn: ConfigRecorder
+    Properties:
+      ConfigRuleName: required-tags
+      Description: Verifica se os recursos possuem as tags obrigatórias
+      Source:
+        Owner: AWS
+        SourceIdentifier: REQUIRED_TAGS
+      InputParameters:
+        tag1Key: !Ref RequiredTag1Key
+        tag2Key: !Ref RequiredTag2Key
+        tag3Key: !Ref RequiredTag3Key
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::Instance
+          - AWS::RDS::DBInstance
+          - AWS::S3::Bucket
+
+  DesiredInstanceTypeRule:
+    Type: AWS::Config::ConfigRule
+    DependsOn: ConfigRecorder
+    Properties:
+      ConfigRuleName: desired-instance-type
+      Description: Verifica se as instâncias EC2 usam apenas o tipo permitido
+      Source:
+        Owner: AWS
+        SourceIdentifier: DESIRED_INSTANCE_TYPE
+      InputParameters:
+        instanceType: !Ref AllowedInstanceType
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::Instance
+
+Outputs:
+  ConfigBucketName:
+    Description: Bucket S3 usado pelo AWS Config
+    Value: !Ref ConfigBucket
+  RequiredTagsRuleArn:
+    Description: ARN da regra de tags obrigatórias
+    Value: !GetAtt RequiredTagsRule.Arn
+  DesiredInstanceTypeRuleArn:
+    Description: ARN da regra de tipo de instância
+    Value: !GetAtt DesiredInstanceTypeRule.Arn
