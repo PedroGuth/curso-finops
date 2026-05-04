@@ -22,6 +22,18 @@ Uma VPC com sub-rede pública contém o servidor de produção (sempre ativo) e 
 3. O **grupo de Auto Scaling** possui ações programadas: escala para 1 instância às 8h e volta para 0 às 18h.
 4. Quando o Auto Scaling escala, ele usa o Launch Template atualizado, garantindo que o ambiente de teste sempre reflita a produção.
 
+```mermaid
+graph LR
+    PROD[🖥️ Instância de<br/>Produção] -->|Snapshot diário| BACKUP[💾 AWS Backup]
+    BACKUP -->|Gera| AMI[📀 AMI]
+    EB[⏰ EventBridge<br/>cron 7h UTC] -->|Aciona| LAMBDA[⚡ Lambda<br/>Atualiza AMI]
+    LAMBDA -->|Atualiza| LT[📋 Launch Template]
+    AMI -.->|Referenciada| LT
+    LT -->|Usado por| ASG[📈 Auto Scaling Group]
+    ASG -->|8h scale-up 🔼| TEST[🖥️ Instância de Teste]
+    ASG -->|18h scale-down 🔽| ZERO[0 instâncias]
+```
+
 ## Passo a Passo
 
 ### 1. Criar Plano de Backup no AWS Backup

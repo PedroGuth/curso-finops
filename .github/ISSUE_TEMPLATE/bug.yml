@@ -1,0 +1,27 @@
+---
+name: "🐛 Bug ou erro no material"
+description: "Encontrou um erro em script, query, policy ou documentação? Reporte aqui!"
+labels: ["bug"]
+---
+
+## Arquivo com erro
+
+<!-- Ex: scripts/migrate-gp2-to-gp3.sh, queries/custo-diario.sql -->
+
+## Descrição do erro
+
+<!-- O que está errado? -->
+
+## Comportamento esperado
+
+<!-- O que deveria acontecer? -->
+
+## Como reproduzir
+
+<!-- Passos para reproduzir o problema -->
+
+## Ambiente
+
+- **OS**: <!-- Ex: macOS, Ubuntu, Windows -->
+- **AWS CLI version**: <!-- aws --version -->
+- **Região**: <!-- Ex: us-east-1, sa-east-1 -->

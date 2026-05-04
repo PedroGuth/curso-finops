@@ -4,6 +4,16 @@
 
 Reduzir custos de EC2 e RDS usando o AWS Instance Scheduler para ligar e desligar instâncias automaticamente fora do horário comercial, economizando até ~70% em ambientes de desenvolvimento e teste.
 
+```mermaid
+graph LR
+    EB[EventBridge - Cron] -->|Aciona| Lambda[Lambda]
+    Lambda -->|Consulta| DDB[DynamoDB - Schedules]
+    Lambda -->|Liga/Desliga| EC2[EC2 - tag Schedule]
+    Lambda -->|Liga/Desliga| RDS[RDS - tag Schedule]
+    EC2 --> CW[CloudWatch - Métricas]
+    RDS --> CW
+```
+
 ## Serviços Utilizados
 
 - AWS Instance Scheduler

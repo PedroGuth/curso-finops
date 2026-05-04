@@ -4,6 +4,16 @@
 
 Reduzir custos de armazenamento migrando dados de volumes EBS para Amazon S3 com regras de ciclo de vida automáticas, e usando Lambda + Aurora Serverless como catálogo de metadados.
 
+```mermaid
+graph TB
+    EBS[Volume EBS] -->|Migra dados| S3[Bucket S3 - Standard]
+    S3 -->|S3 Event| Lambda[Lambda]
+    Lambda -->|Registra metadados| Aurora[Aurora Serverless]
+    S3 -->|30 dias| IA[Standard-IA]
+    IA -->|90 dias| Glacier[Glacier]
+    Glacier -->|365 dias| Expire[Expirar]
+```
+
 ## Serviços Utilizados
 
 - Amazon S3

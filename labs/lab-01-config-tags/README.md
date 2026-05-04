@@ -21,6 +21,31 @@ O ambiente consiste em uma VPC com sub-rede pública (servidor web) e sub-rede p
 
 Quando uma instância de produção usa tipo incorreto, o Config aciona uma remediação automática via SSM Automation. Paralelamente, uma política IAM impede que usuários criem instâncias sem as tags obrigatórias.
 
+```mermaid
+graph TB
+    subgraph VPC
+        subgraph Sub-rede Pública
+            WEB[🖥️ Servidor Web<br/>EC2]
+        end
+        subgraph Sub-rede Privada
+            DB[🗄️ Servidor DB<br/>EC2]
+        end
+    end
+
+    subgraph AWS Config
+        R1[📋 required-tags<br/>Department, Application, Environment]
+        R2[📋 desired-instance-type<br/>t3.medium para Production]
+    end
+
+    IAM[🔒 IAM Policy<br/>Bloqueia criação sem tags]
+
+    R1 -->|Avalia conformidade| WEB
+    R1 -->|Avalia conformidade| DB
+    R2 -->|Avalia conformidade| WEB
+    R2 -->|Avalia conformidade| DB
+    IAM -->|Nega RunInstances<br/>sem tags obrigatórias| VPC
+```
+
 ## Passo a Passo
 
 ### 1. Ativar o AWS Config

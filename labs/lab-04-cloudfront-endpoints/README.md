@@ -4,6 +4,21 @@
 
 Reduzir custos de transferência de dados usando Amazon CloudFront para cache de conteúdo e VPC Endpoints para eliminar tráfego pelo NAT Gateway.
 
+```mermaid
+graph LR
+    Users[Usuários] --> CF[CloudFront]
+    CF --> S3[S3 - Conteúdo Estático]
+    CF --> ALB[ALB - Conteúdo Dinâmico]
+    ALB --> ASG_AZ1[Auto Scaling Group\nAZ1 - Sub-rede Privada]
+    ALB --> ASG_AZ2[Auto Scaling Group\nAZ2 - Sub-rede Privada]
+    ASG_AZ1 --> VPCE_GW[VPC Endpoint Gateway]
+    ASG_AZ2 --> VPCE_GW
+    VPCE_GW --> DynamoDB[DynamoDB]
+    ASG_AZ1 --> VPCE_IF[VPC Endpoint Interface]
+    ASG_AZ2 --> VPCE_IF
+    VPCE_IF --> SSM[Session Manager]
+```
+
 ## Serviços Utilizados
 
 - Amazon CloudFront

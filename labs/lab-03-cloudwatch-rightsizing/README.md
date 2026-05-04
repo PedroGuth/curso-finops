@@ -17,6 +17,23 @@ Usar métricas do CloudWatch (CPU, memória e disco) para identificar instância
 
 Instâncias EC2 de produção possuem o agente do CloudWatch instalado via Systems Manager, coletando métricas customizadas de memória e disco (que não são nativas do EC2). As métricas são enviadas ao CloudWatch, onde dashboards e alarmes permitem identificar instâncias com baixa utilização. Um alarme SNS notifica a equipe quando CPU fica abaixo de 10% por 24h consecutivas, sinalizando oportunidade de rightsizing.
 
+```mermaid
+graph TB
+    subgraph Resource Group<br/>tag: Environment=Production
+        EC2A[🖥️ EC2 Instância A]
+        EC2B[🖥️ EC2 Instância B]
+        EC2C[🖥️ EC2 Instância C]
+    end
+
+    EC2A -->|CloudWatch Agent| CW[📊 CloudWatch<br/>Métricas: CPU, Memória, Disco]
+    EC2B -->|CloudWatch Agent| CW
+    EC2C -->|CloudWatch Agent| CW
+
+    CW -->|CPU < 10% por 24h| ALARM[🔔 CloudWatch Alarm]
+    ALARM -->|Notificação| SNS[📧 SNS Topic<br/>rightsizing-alerts]
+    SNS -->|E-mail| TEAM[👥 Equipe FinOps]
+```
+
 ## Passo a Passo
 
 ### 1. Criar Resource Group

@@ -1,6 +1,10 @@
 # FinOps na AWS – Economizando e Gerenciando Custos na Nuvem ☁️💰
 
 [![Udemy](https://img.shields.io/badge/Udemy-Acessar%20Curso-purple?style=for-the-badge&logo=udemy)](https://www.udemy.com/course/finops-na-aws-economizando-e-gerenciando-custos-na-nuvem/)
+[![AWS](https://img.shields.io/badge/AWS-FinOps-FF9900?style=for-the-badge&logo=amazonwebservices)](https://aws.amazon.com/aws-cost-management/)
+[![License: MIT](https://img.shields.io/badge/Licença-MIT-green?style=for-the-badge)](LICENSE)
+[![Labs](https://img.shields.io/badge/Labs-6%20práticos-blue?style=for-the-badge)](#laboratórios-práticos)
+[![Cheat Sheet](https://img.shields.io/badge/📋-Cheat%20Sheet-red?style=for-the-badge)](CHEATSHEET.md)
 
 Repositório de apoio ao curso **FinOps na AWS** disponível na Udemy.
 
