@@ -114,6 +114,18 @@ Não tem enrolação: o objetivo é transformar números e faturas em oportunida
 | `custo-transferencia-dados.sql` | Custos de transferência de dados |
 | `recursos-sem-tags.sql` | Recursos sem tags (desperdício) |
 | `cobertura-savings-plans.sql` | Cobertura de SPs e RIs |
+| `top-accounts-custo.sql` | Top contas por custo (Organizations) |
+| `ec2-custo-por-tipo.sql` | EC2 por tipo de instância e modelo de preço |
+| `custo-por-regiao.sql` | Custo total por região AWS |
+
+### 🏗️ [Terraform](terraform/)
+
+| Módulo | Descrição |
+|--------|-----------|
+| `budget-alerts/` | Budget com alertas + Cost Anomaly Detection |
+| `s3-lifecycle/` | S3 com lifecycle, versionamento e encryption |
+| `instance-scheduler/` | Lambda + EventBridge para ligar/desligar EC2 |
+| `vpc-endpoints/` | VPC Endpoints Gateway para S3 e DynamoDB |
 
 ## Pré-requisitos
 
@@ -143,6 +155,7 @@ Saber o que é um EC2, S3 e RDS já serve :) Bastam conhecimentos práticos na n
 ├── lambda/                          # ⚡ Funções Lambda para automação
 ├── policies/                        # 🔒 IAM Policies e SCPs (JSON)
 ├── queries/                         # 📊 Queries Athena para CUR (SQL)
+├── terraform/                       # 🏗️ Módulos Terraform reutilizáveis
 ├── checklists/                      # ✅ Well-Architected Checklist
 └── templates/                       # 📝 Templates de relatórios FinOps
 ```

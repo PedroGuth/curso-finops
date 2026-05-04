@@ -19,6 +19,7 @@ done
 
 echo "🔍 Buscando Elastic IPs não associados na região ${REGION}..."
 
+# shellcheck disable=SC2016
 EIPS=$(aws ec2 describe-addresses \
   --region "$REGION" \
   --query 'Addresses[?AssociationId==`null`].{AllocationId:AllocationId,PublicIp:PublicIp}' \

@@ -1,21 +1,26 @@
----
 name: "❓ Dúvida sobre o curso"
 description: "Tem uma dúvida sobre algum módulo, lab ou conceito? Pergunte aqui!"
 labels: ["dúvida"]
----
-
-## Módulo/Lab relacionado
-
-<!-- Ex: Módulo 3 - Preços e Custos, Lab 4 - CloudFront -->
-
-## Sua dúvida
-
-<!-- Descreva sua dúvida da forma mais clara possível -->
-
-## O que você já tentou?
-
-<!-- Conte o que já pesquisou ou testou -->
-
-## Screenshots (opcional)
-
-<!-- Cole prints do console, erro, etc. -->
+body:
+  - type: input
+    id: modulo
+    attributes:
+      label: Módulo/Lab relacionado
+      placeholder: "Ex: Módulo 3 - Preços e Custos, Lab 4 - CloudFront"
+  - type: textarea
+    id: duvida
+    attributes:
+      label: Sua dúvida
+      description: Descreva sua dúvida da forma mais clara possível
+    validations:
+      required: true
+  - type: textarea
+    id: tentou
+    attributes:
+      label: O que você já tentou?
+      description: Conte o que já pesquisou ou testou
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots (opcional)
+      description: Cole prints do console, erro, etc.

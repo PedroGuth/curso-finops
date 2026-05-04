@@ -30,11 +30,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate YAML files
+      - name: Validate YAML files (CloudFormation-aware)
         run: |
           failed=0
           for f in $(find tools/ labs/ -name '*.yaml' -o -name '*.yml'); do
-            if ! python3 -c "import yaml, sys; yaml.safe_load(open(sys.argv[1]))" "$f" 2>&1; then
+            if ! python3 -c "
+          import yaml, sys
+          class CFNLoader(yaml.SafeLoader): pass
+          for tag in ['!Ref','!Sub','!GetAtt','!Select','!Split','!Join','!If','!Equals','!Not','!And','!Or','!FindInMap','!Base64','!Cidr','!ImportValue','!GetAZs','!Condition']:
+              CFNLoader.add_multi_constructor(tag, lambda l,s,n: None)
+          yaml.load(open(sys.argv[1]), CFNLoader)
+          " "$f" 2>&1; then
               echo "❌ Invalid YAML: $f"
               failed=1
             else
