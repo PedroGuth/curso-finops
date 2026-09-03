@@ -176,4 +176,7 @@ Boa parte sim. Instance Scheduler para ligar/desligar recursos, Lambda + EventBr
 
 ---
 
-> 💬 **Tem uma dúvida que não está aqui?** Poste na seção de perguntas do curso na Udemy!
+> 💬 **Tem uma dúvida que não está aqui?** Abra uma
+> [dúvida sobre o curso](https://github.com/PedroGuth/curso-finops/issues/new?template=duvida.yml)
+> aqui no repositório — não precisa estar matriculado. Quem faz o
+> [curso completo](https://turing.education/finops) também pode perguntar direto na área de alunos.

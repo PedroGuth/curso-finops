@@ -197,4 +197,4 @@ sudo apt-get install jq
 | [GLOSSARIO.md](GLOSSARIO.md) | Glossário de termos FinOps |
 | [CERTIFICACOES.md](CERTIFICACOES.md) | Guia de estudo para certificações |
 | [runbooks/](runbooks/) | Procedimentos para incidentes de custo |
-| [Curso na Udemy](https://www.udemy.com/course/finops-na-aws-economizando-e-gerenciando-custos-na-nuvem/) | Acesso ao curso completo |
+| [Curso completo](https://turing.education/finops) | 54 aulas, 10 módulos e certificado |
