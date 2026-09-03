@@ -157,4 +157,4 @@ flowchart TD
 
 ---
 
-*Referência do curso [FinOps na AWS](https://www.udemy.com/course/finops-na-aws-economizando-e-gerenciando-custos-na-nuvem/) — Udemy*
+*Referência do curso [FinOps na AWS](https://turing.education/finops)*

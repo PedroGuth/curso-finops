@@ -329,4 +329,4 @@ Aproveite os materiais deste repositório para reforçar seus estudos:
 ---
 
 *Última atualização: Maio 2026*
-*Guia criado como material de apoio ao curso [FinOps na AWS](https://www.udemy.com/course/finops-na-aws-economizando-e-gerenciando-custos-na-nuvem/)*
+*Guia criado como material de apoio ao curso [FinOps na AWS](https://turing.education/finops)*
